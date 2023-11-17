@@ -38,7 +38,7 @@ public:
 
 
     template <typename It>
-    matrix_t(int cols, int rows, It start, It fin) {
+    matrix_t(int cols, int rows, It start, It fin) : rows_(rows), cols_(cols) {
         int size = rows_ * cols_;
 
         data_ = new T[size];
@@ -59,18 +59,20 @@ public:
     }
 
 
-    proxy_row opertator[](int n) const { return proxy_row{rows_buff_[n]}; }
+    proxy_row operator[](int n) const { return proxy_row{rows_buff_[n]}; }
 
 
-    void print() const {
+    void dump() const {
         for (int i = 0; i < rows_; ++i) {
             for (int j = 0; j < cols_; ++j)
                 std::cout << rows_buff_[i][j] << " ";
             std::cout << std::endl;
         }
+        std::cout << std::endl;
     }
 
-    static const matrix_t& eye(int size) {
+
+    static matrix_t eye(int size) {
         matrix_t mtx{size, size, 0};
         for (int i = 0; i < size; ++i) mtx[i][i] = 1;
 
