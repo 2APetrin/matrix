@@ -5,17 +5,21 @@ using namespace matrix;
 
 int main() {
     int sz = 0;
+
     std::cin >> sz;
+    std::vector<double> v;
 
-    /* matrix_t<int> mtrx{sz, sz, 0};
-    mtrx[2][2] = 9;
-    mtrx.dump(); */
+    v.reserve(sz*sz);
 
-    matrix_t<int> mtrx2 = matrix_t<int>::eye(sz);
-    mtrx2.dump();
+    double val = 0;
+    for (int i = 0, end = sz*sz; i < end; ++i) {
+        std::cin >> val;
+        v.push_back(val);
+    }
 
-    std::vector<int> v{1, 2, 3, 4, 5, 6, 7, 8, 9};
+    matrix_t<double> mtrx3{sz, sz, v.begin(), v.end()};
+    mtrx3.transpose();
 
-    matrix_t<int> mtrx3{3, 3, v.begin(), v.end()};
-    mtrx3.dump();
+    double det = mtrx3.determinant();
+    std::cout << "determinant = " << det << std::endl;
 }
