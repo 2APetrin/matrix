@@ -1,5 +1,5 @@
 #include "matrix.hpp"
-#include <iterator>
+#include <vector>
 
 using namespace matrix;
 
@@ -17,9 +17,9 @@ int main() {
         v.push_back(val);
     }
 
-    matrix_t<double> mtrx3{sz, sz, v.begin(), v.end()};
-    mtrx3.transpose();
+    matrix_t<double> mtrx{sz, sz, v.begin(), v.end()};
+    //mtrx.transpose();
 
-    double det = mtrx3.determinant();
+    double det = mtrx.determinant();
     std::cout << "determinant = " << det << std::endl;
 }

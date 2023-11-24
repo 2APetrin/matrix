@@ -13,7 +13,7 @@ int main() {
 
     for (int i = 0; i < count; ++i) {
         for (int j = 0; j < count; ++j) {
-            double val = (static_cast<double>(std::rand() % 10000)) / 5000.0;
+            double val = (static_cast<double>(std::rand() % 10000)) / 18000.0;
             std::cout << std::setw(5) << val << " ";
         }
 

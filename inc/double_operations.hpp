@@ -4,8 +4,8 @@
 
 namespace doperations {
 
-const double ACCURACY = 0.00001;
+const double DOUBLE_ACCURACY = 10e-7;
 
-inline bool is_equal(double num1, double num2) { return (std::abs(num1 - num2) < ACCURACY); }
+inline bool is_equal(double num1, double num2) { return (std::abs(num1 - num2) < DOUBLE_ACCURACY); }
 
 }
