@@ -10,7 +10,7 @@ set(CMAKE_CXX_FLAGS_DEBUG "-Wall -Wextra -g -O0 -D DEBUG -fsanitize=address,alig
 set(CMAKE_CXX_FLAGS_RELEASE "-Wall -O2 -DNDEBUG")
 
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Debug)
+    set(CMAKE_BUILD_TYPE Release)
 endif()
 
 add_subdirectory(./src)
