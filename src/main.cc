@@ -18,8 +18,7 @@ int main() {
     }
 
     matrix_t<double> mtrx{sz, sz, v.begin(), v.end()};
-    //mtrx.transpose();
 
     double det = mtrx.determinant();
-    std::cout << "determinant = " << det << std::endl;
+    std::cout << det;
 }

@@ -51,8 +51,6 @@ protected:
             throw std::bad_alloc();
         }
 
-        // std::cout << "nothrow check=" << noexcept(std::is_nothrow_copy_constructible<T*>::value) << std::endl; // конструирование указателей noexcept
-
         for (int i = 0; i < rows; ++i) construct(rows_buff_ + i, data_ + cols_ * i); // конструирование указателей noexcept
     }
 
@@ -61,7 +59,7 @@ protected:
     MMM& operator= (const MMM &) = delete;
 
 
-    MMM(MMM&& rhs) noexcept : data_(rhs.data_), rows_buff_(rhs.rows_buff_), rows_(rhs.rows_), cols_(rhs.cols_), used_(rhs.used_) {
+    MMM(MMM&& rhs) noexcept : rows_(rhs.rows_), cols_(rhs.cols_), used_(rhs.used_), data_(rhs.data_), rows_buff_(rhs.rows_buff_) {
         rhs.rows_buff_ = nullptr;
         rhs.data_ = nullptr;
         rhs.used_ = 0;
@@ -97,11 +95,11 @@ protected:
 
 template <typename T>
 class matrix_t final : private detail::MMM<T> {
-    using detail::MMM<T>::data_;
-    using detail::MMM<T>::rows_buff_;
     using detail::MMM<T>::rows_;
     using detail::MMM<T>::cols_;
     using detail::MMM<T>::used_;
+    using detail::MMM<T>::data_;
+    using detail::MMM<T>::rows_buff_;
 
 
     class proxy_row {
@@ -115,7 +113,7 @@ class matrix_t final : private detail::MMM<T> {
     };
 
 public:
-    matrix_t(int rows = 1, int cols = 1, T val = T{}) : detail::MMM<T>(rows, cols) {
+    matrix_t(int cols = 1, int rows = 1, T val = T{}) : detail::MMM<T>(rows, cols) {
         for (int i = 0; i < cols_ * rows_;  ++i) {
             detail::construct(&data_[i], val);
             ++used_;
@@ -129,13 +127,35 @@ public:
 
         It it = start;
         for (; (it != last) && (cnt != size); ++it) {
-            data_[cnt] = *it;
+            detail::construct(&data_[cnt], *it);
             ++used_;
             ++cnt;
         }
 
         if ((cnt != size) || (it != last)) throw matrix_exceptions::bad_elements_cnt();
     }
+
+
+    matrix_t(const matrix_t &mtx) : detail::MMM<T>(mtx.rows_, mtx.cols_) {
+        for (int i = 0; i < mtx.rows_; ++i) {
+            for (int j = 0; j < mtx.cols_; ++j) {
+                detail::construct(&rows_buff_[i][j], mtx[i][j]);
+                used_++;
+            }
+        }
+    }
+
+
+    matrix_t& operator= (const matrix_t &mtx) {
+        matrix_t tmp{mtx};
+        swap(tmp);
+        return *this;
+    }
+
+
+    matrix_t(matrix_t&& matrix)            = default;
+    matrix_t& operator=(matrix_t&& matrix) = default;
+    ~matrix_t()                            = default;
 
 
     proxy_row operator[](int n) const { return proxy_row{rows_buff_[n]}; }
@@ -172,9 +192,20 @@ public:
 
     static matrix_t eye(int size) {
         matrix_t mtx{size, size, 0};
-        for (int i = 0; i < size; ++i) mtx[i][i] = 1;
+        for (int i = 0; i < size; ++i) mtx[i][i] = 1.0;
 
         return mtx;
+    }
+
+
+    T trace() const {
+        if (rows_ != cols_) throw matrix_exceptions::matrix_bad_shape();
+
+        T val;
+        val = rows_buff_[0][0];
+
+        for (int i = 1; i < rows_; ++i) val += rows_buff_[i][i];
+        return val;
     }
 
 
@@ -184,7 +215,6 @@ public:
         matrix_t<double> mtx{rows_, cols_, NAN};
 
         copy_to_double(mtx);
-        mtx.dump();
 
         int primary_row = 0;
         double elem = 0.0;
@@ -192,7 +222,6 @@ public:
 
         for (int i = 0; i < cols_; ++i) {
             elem = detail::find_primary_elem(mtx, i, &primary_row);
-            std::cout << "max="<< elem << " row=" << primary_row << std::endl;
             if (is_equal(0.0, elem)) return 0.0;
 
             if (mtx.swap_rows(i, primary_row)) det *= -elem;
@@ -202,7 +231,6 @@ public:
                 double multiplier = -1 * mtx[j][i] / elem;
                 detail::add_rows(mtx, i, j, multiplier);
             }
-            mtx.dump();
         }
 
         return det;
@@ -210,6 +238,9 @@ public:
 
 
     bool swap_rows(int fst, int snd) {
+        if ((fst < 0 || fst >= rows_) ||
+            (snd < 0 || snd >= rows_)) throw matrix_exceptions::bad_cols_rows_number();
+
         if (fst == snd) return false;
 
         T* fstrow = rows_buff_[fst];
@@ -227,11 +258,66 @@ public:
 
         for (int i = 0; i < rows_; ++i) {
             for (int j = 0; j < cols_; ++j)
-                std::cout << std::setw(9) << rows_buff_[i][j] << " ";
+                std::cout << std::fixed << std::setw(8) << std::setprecision(3) << rows_buff_[i][j] << " ";
             std::cout << std::endl;
         }
 
         std::cout << std::endl;
+    }
+
+
+    matrix_t& operator*= (T num) {
+        matrix_t tmp(*this);
+
+        for (int i = 0; i != rows_; ++i)
+            for (int j = 0; j != cols_; ++j)
+                tmp[i][j] *= num;
+
+        swap(tmp);
+        return *this;
+    }
+
+
+    matrix_t& operator+= (const matrix_t& mtx) {
+        if ((rows_ != mtx.get_nrows()) ||
+            (cols_ != mtx.get_ncols())) throw matrix_exceptions::bad_matrixes_add();
+
+        matrix_t tmp{mtx};
+        for (int i = 0; i != rows_; ++i)
+            for (int j = 0; j != cols_; ++j)
+                tmp[i][j] += rows_buff_[i][j];
+
+        swap(tmp);
+        return *this;
+    }
+
+
+    void product(const matrix_t &mtx) {
+        if ((rows_ != mtx.get_ncols()) ||
+            (cols_ != mtx.get_nrows())) throw matrix_exceptions::bad_matrixes_mul();
+
+        int new_cols = mtx.get_ncols();
+        matrix_t tmp{new_cols, rows_};
+
+        for (int i = 0; i != rows_; ++i) {
+            for (int j = 0; j != new_cols; ++j) {
+                tmp[i][j] = get_mul_val(mtx, i, j);
+            }
+        }
+
+        swap(tmp);
+    }
+
+
+    bool equal(const matrix_t &mtx) const {
+        if (cols_ != mtx.cols_ ||
+            rows_ != mtx.rows_) return false;
+
+        for (int i = 0, endi = mtx.rows_; i < endi; ++i)
+            for (int j = 0, endj = mtx.cols_; j < endj; ++j)
+                if (rows_buff_[i][j] != mtx[i][j]) return false;
+
+        return true;
     }
 
 
@@ -253,7 +339,44 @@ private:
             for (int j = 0; j < cols_; ++j)
                 mtx[i][j] = static_cast<double>(rows_buff_[i][j]);
     }
+
+
+    T get_mul_val(const matrix_t &mtx, int i0, int j0) {
+        T val = T{};
+        for (int i = 0; i < cols_; ++i)
+            val += rows_buff_[i0][i] * mtx[i][j0];
+
+        return val;
+    }
 };
+
+
+template <typename T>
+matrix_t<T> operator* (const matrix_t<T>& mtx, T num) {
+    matrix_t<T> tmp{mtx}; tmp *= num;
+    return tmp;
+}
+
+
+template <typename T>
+matrix_t<T> operator* (T num, const matrix_t<T>& mtx) {
+    matrix_t<T> tmp{mtx}; tmp *= num;
+    return tmp;
+}
+
+
+template <typename T>
+matrix_t<T> operator* (const matrix_t<T>& mtx1, const matrix_t<T>& mtx2) {
+    matrix_t<T> tmp{mtx1}; tmp.product(mtx2);
+    return tmp;
+}
+
+
+template <typename T>
+matrix_t<T> operator+(const matrix_t<T>& mtx1, const matrix_t<T>& mtx2) {
+    matrix_t<T> tmp{mtx1}; tmp += mtx2;
+    return tmp;
+}
 
 
 namespace detail {
@@ -274,16 +397,16 @@ namespace detail {
         }
 
         *row_number = prim_row;
-        std::cout << "max=" << max << std::endl;
         return max;
     }
 
 
     void add_rows(matrix_t<double> &mtx, int src, int dest, double multiplier) {
-        double val  = 0.0;
-        for (int i = 0; i < mtx.get_ncols(); ++i) {
+        double val = NAN;
+
+        for (int i = 0, endi = mtx.get_ncols(); i < endi; ++i) {
             val = multiplier * mtx[src][i] + mtx[dest][i];
-            mtx[dest][i] = is_equal(0.0, val) ? 0.0 : val;
+            mtx[dest][i] = val;
         }
     }
 }

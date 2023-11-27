@@ -17,4 +17,5 @@ add_subdirectory(./src)
 add_subdirectory(./test)
 
 target_include_directories(matrix PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/inc)
+target_include_directories(basic_test_gen PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/inc)
 
